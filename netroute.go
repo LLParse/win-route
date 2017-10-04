@@ -16,6 +16,7 @@ type NetRoute struct {
 	createIpForwardEntry *syscall.Proc
 	setIpForwardEntry    *syscall.Proc
 	deleteIpForwardEntry *syscall.Proc
+	systemError          map[uint32]string
 }
 
 func NewNetRoute() *NetRoute {
@@ -27,6 +28,17 @@ func NewNetRoute() *NetRoute {
 		createIpForwardEntry: iphlpapi.MustFindProc("CreateIpForwardEntry"),
 		setIpForwardEntry:    iphlpapi.MustFindProc("SetIpForwardEntry"),
 		deleteIpForwardEntry: iphlpapi.MustFindProc("DeleteIpForwardEntry"),
+
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx
+		systemError: map[uint32]string{
+			0:    "ERROR_SUCCESS",
+			2:    "ERROR_FILE_NOT_FOUND",
+			5:    "ERROR_ACCESS_DENIED",
+			50:   "ERROR_NOT_SUPPORTED",
+			87:   "ERROR_INVALID_PARAMETER",
+			122:  "ERROR_INSUFFICIENT_BUFFER",
+			1168: "ERROR_NOT_FOUND",
+		},
 	}
 }
 
@@ -40,6 +52,7 @@ func (r *NetRoute) GetInterfaceByIndex(index uint32) (*IPInterfaceEntry, error) 
 		InterfaceIndex: index,
 	}
 
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/aa814417(v=vs.85).aspx
 	r1, r2, err := r.getIpInterfaceEntry.Call(uintptr(unsafe.Pointer(ie)))
 	log.Debugf("%+v", ie)
 	return ie, r.buildError(r1, r2, err)
@@ -56,7 +69,6 @@ func (r *NetRoute) GetRoutes() ([]IPForwardRow, error) {
 		0,
 	)
 
-	// TODO limit this to N calls
 	for r1 == 122 {
 		log.WithFields(log.Fields{
 			"cur_bufsize": len(buf.mem),
@@ -107,13 +119,11 @@ func (r *NetRoute) DeleteRoute(route *IPForwardRow) error {
 
 func (r *NetRoute) buildError(r1 uintptr, r2 uintptr, err error) error {
 	log.Debugf("r1=%v r2=%v err=%+v", r1, r2, err)
-	switch r1 {
-	case 0:
+	if r1 == 0 {
 		return nil
-	case 122:
-		return errors.New("ERROR_INSUFFICIENT_BUFFER")
-	default:
-		return errors.New(fmt.Sprintf("Error %d: %s", r1, err.Error()))
 	}
-	return nil
+	if m, ok := r.systemError[uint32(r1)]; ok {
+		return errors.New(m)
+	}
+	return errors.New(fmt.Sprintf("ERROR CODE %d", r1))
 }
