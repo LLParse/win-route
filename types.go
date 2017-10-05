@@ -1,4 +1,4 @@
-package main
+package winroute
 
 type IPForwardRow struct {
 	ForwardDest      uint32
