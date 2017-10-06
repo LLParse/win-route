@@ -17,6 +17,16 @@ type IPForwardRow struct {
 	ForwardMetric5   uint32
 }
 
+func (t IPForwardRow) Equals(o IPForwardRow) bool {
+	return t.ForwardDest == o.ForwardDest &&
+		t.ForwardMask == o.ForwardMask &&
+		t.ForwardNextHop == o.ForwardNextHop &&
+		t.ForwardIfIndex == o.ForwardIfIndex &&
+		t.ForwardType == o.ForwardType &&
+		t.ForwardProto == o.ForwardProto &&
+		t.ForwardMetric1 == o.ForwardMetric1
+}
+
 type IPInterfaceEntry struct {
 	Family                               uint32
 	InterfaceLuid                        uint64
