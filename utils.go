@@ -94,7 +94,7 @@ func ResolveInterface(gatewayAddress net.IP) (net.Interface, error) {
 		log.WithFields(log.Fields{
 			"index": i.Index,
 			"name":  i.Name,
-		}).Info("Found viable interface")
+		}).Debug("Found viable interface")
 	}
 
 	switch len(viableInterfaces) {
